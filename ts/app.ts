@@ -74,7 +74,25 @@ class App {
     stopping: boolean = false;
     static shouldQuit: boolean = false;
 
-    static javapath: string = path.join(app.getAppPath(), 'bin', 'java');
+    static javapath: string;
+
+    static getJavaPath(): string {
+        const appPath = app.getAppPath();
+        const isPackaged = app.isPackaged;
+
+        if (isPackaged) {
+            // In packaged app, binaries are in app.asar.unpacked
+            const unpackedPath = path.join(path.dirname(appPath), 'app.asar.unpacked');
+            return process.platform === 'win32'
+                ? path.join(unpackedPath, 'bin', 'java.exe')
+                : path.join(unpackedPath, 'bin', 'java');
+        } else {
+            // In development, use the regular path
+            return process.platform === 'win32'
+                ? path.join(appPath, 'bin', 'java.exe')
+                : path.join(appPath, 'bin', 'java');
+        }
+    }
     static iconPath: string;
 
     static saved: boolean = true;
@@ -145,7 +163,7 @@ class App {
         }
 
         if (process.platform == 'win32') {
-            App.javapath = path.join(app.getAppPath(), 'bin', 'java.exe');
+            // Path will be set by getJavaPath() method
         }
 
         if (!existsSync(path.join(app.getPath('appData'), app.name))) {
@@ -154,8 +172,13 @@ class App {
 
         App.loadPreferences();
 
-        this.ls = spawn(App.javapath, ['--module-path', 'lib', '-m', 'tmxserver/com.maxprograms.tmxserver.TMXServer', '-port', '8060', '-lang', App.lang], { cwd: app.getAppPath(), windowsHide: true });
-        execFileSync(App.javapath, ['--module-path', 'lib', '-m', 'tmxserver/com.maxprograms.tmxserver.CheckURL', 'http://localhost:8060/TMXServer'], { cwd: app.getAppPath(), windowsHide: true });
+        App.javapath = App.getJavaPath();
+        const workingDir = app.isPackaged
+            ? path.join(path.dirname(app.getAppPath()), 'app.asar.unpacked')
+            : app.getAppPath();
+
+        this.ls = spawn(App.javapath, ['--module-path', 'lib', '-m', 'tmxserver/com.maxprograms.tmxserver.TMXServer', '-port', '8060', '-lang', App.lang], { cwd: workingDir, windowsHide: true });
+        execFileSync(App.javapath, ['--module-path', 'lib', '-m', 'tmxserver/com.maxprograms.tmxserver.CheckURL', 'http://localhost:8060/TMXServer'], { cwd: workingDir, windowsHide: true });
 
         App.locations = new Locations(path.join(app.getPath('appData'), app.name, 'locations.json'));
 
@@ -1492,7 +1515,17 @@ class App {
         if (existsSync(path.join(app.getPath('appData'), app.name, 'defaults.json'))) {
             try {
                 let data: Buffer = readFileSync(path.join(app.getPath('appData'), app.name, 'defaults.json'));
-                App.currentDefaults = JSON.parse(data.toString());
+                let loadedDefaults = JSON.parse(data.toString());
+
+                // Validate loaded defaults to prevent invisible windows
+                if (loadedDefaults.width && loadedDefaults.width >= 300 && loadedDefaults.width <= 3000 &&
+                    loadedDefaults.height && loadedDefaults.height >= 200 && loadedDefaults.height <= 2000 &&
+                    typeof loadedDefaults.x === 'number' && loadedDefaults.x >= -100 && loadedDefaults.x <= 2000 &&
+                    typeof loadedDefaults.y === 'number' && loadedDefaults.y >= -100 && loadedDefaults.y <= 1500) {
+                    App.currentDefaults = loadedDefaults;
+                } else {
+                    console.log('Invalid window defaults detected, using fallback values');
+                }
             } catch (err) {
                 console.error(err);
             }
@@ -4261,5 +4294,5 @@ class App {
 try {
     new App(process.argv);
 } catch (e) {
-    console.error("Unable to instantiate App();");
+    console.error("Unable to instantiate App():", e);
 }

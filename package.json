@@ -6,7 +6,11 @@
     "main": "js/app.js",
     "scripts": {
         "build": "tsc",
-        "start": "npm run build && electron ."
+        "start": "npm run build && electron .",
+        "dist": "npm run build && electron-builder",
+        "dist-mac": "npm run build && electron-builder --mac",
+        "dist-win": "npm run build && electron-builder --win",
+        "dist-all": "npm run build && electron-builder --win --mac --linux"
     },
     "author": {
         "name": "Rodolfo M. Raya",
@@ -19,12 +23,77 @@
         "url": "https://github.com/rmraya/TMXEditor.git"
     },
     "devDependencies": {
+        "@types/node": "^24.0.10",
         "electron": "^35.1.4",
+        "electron-builder": "^26.0.12",
         "typescript": "^5.8.3"
     },
     "dependencies": {
-        "typesxml": "^1.7.0",
+        "dmg-license": "^1.0.11",
+        "sdltm": "^1.4.3",
         "typesbcp47": "^1.5.4",
-        "sdltm": "^1.4.3"
+        "typesxml": "^1.7.0"
+    },
+    "build": {
+        "appId": "com.maxprograms.tmxeditor",
+        "productName": "TMXEditor",
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "js/**/*",
+            "html/**/*",
+            "css/**/*",
+            "fonts/**/*",
+            "icons/**/*",
+            "i18n/**/*",
+            "bin/**/*",
+            "lib/**/*",
+            "jars/**/*",
+            "conf/**/*",
+            "legal/**/*",
+            "include/**/*",
+            "release",
+            "package.json"
+        ],
+        "asarUnpack": [
+            "bin/**/*",
+            "lib/**/*",
+            "jars/**/*",
+            "conf/**/*",
+            "legal/**/*",
+            "include/**/*",
+            "release"
+        ],
+        "win": {
+            "target": [
+                {
+                    "target": "portable",
+                    "arch": ["x64"]
+                }
+            ],
+            "icon": "icons/tmxeditor-512.png"
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true
+        },
+        "portable": {
+            "artifactName": "TMXEditor-${version}-portable.exe"
+        },
+        "mac": {
+            "target": "dmg",
+            "icon": "icons/tmxeditor-512.png",
+            "identity": null
+        },
+        "linux": {
+            "target": [
+                "AppImage",
+                "deb"
+            ],
+            "icon": "icons/tmxeditor-512.png"
+        }
     }
 }
